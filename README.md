@@ -17,11 +17,25 @@
 
 -  授权 英文单词：authorization 将操作系统的“权力”“授予”“主体”，这样主体就具备了操作系统中特定功 能的能力。 所以简单来说，授权就是给用户分配权限。
 
-# 核心过滤器
+# 过滤器
 
-- FilterSecurityInterceptor：是一个方法级的权限过滤器, 基本位于过滤链的最底部。
-- ExceptionTranslationFilter：是个异常过滤器，用来处理在认证授权过程中抛出的异常
-- UsernamePasswordAuthenticationFilter ：对/login 的 POST 请求做拦截，校验表单中用户 名，密码。
+SpringSecurity 采用的是责任链的设计模式，它有一条很长的过滤器链
+
+- WebAsyncManagerIntegrationFilter：将 Security 上下文与 Spring Web 中用于 处理异步请求映射的 WebAsyncManager 进行集成。 
+- SecurityContextPersistenceFilter：在每次请求处理之前将该请求相关的安全上 下文信息加载到 SecurityContextHolder 中，然后在该次请求处理完成之后，将 SecurityContextHolder 中关于这次请求的信息存储到一个“仓储”中，然后将 SecurityContextHolder 中的信息清除，例如在 Session 中维护一个用户的安全信 息就是这个过滤器处理的。 
+- HeaderWriterFilter：用于将头信息加入响应中。
+- CsrfFilter：用于处理跨站请求伪造。 
+- LogoutFilter：用于处理退出登录。 
+- **UsernamePasswordAuthenticationFilter**：用于处理基于表单的登录请求，从表单中 获取用户名和密码。默认情况下处理来自 /login 的请求。从表单中获取用户名和密码 时，默认使用的表单 name 值为 username 和 password，这两个值可以通过设置这个 过滤器的 usernameParameter 和 passwordParameter 两个参数的值进行修改。 
+- DefaultLoginPageGeneratingFilter：如果没有配置登录页面，那系统初始化时就会 配置这个过滤器，并且用于在需要进行登录时生成一个登录表单页面。 
+- BasicAuthenticationFilter：检测和处理 http basic 认证。
+- RequestCacheAwareFilter：用来处理请求的缓存。 
+- SecurityContextHolderAwareRequestFilter：主要是包装请求对象 request。 
+- AnonymousAuthenticationFilter：检测 SecurityContextHolder 中是否存在 Authentication 对象，如果不存在为其提供一个匿名 Authentication。 
+- SessionManagementFilter：管理 session 的过滤器 
+- **ExceptionTranslationFilter**：是个异常过滤器，用来处理在认证授权过程中抛出的异常处理 AccessDeniedException 和 AuthenticationException 异常。 
+- **FilterSecurityInterceptor**：是一个方法级的权限过滤器, 基本位于过滤链的最底部。可以看做过滤器链的出口。 
+- RememberMeAuthenticationFilter：当用户没有登录而直接访问资源时, 从 cookie  里找出用户的信息, 如果 Spring Security 能够识别出用户提供的 remember me cookie,  用户将不必填写用户名和密码, 而是直接登录进入系统，该过滤器默认不开启。
 
 # 核心接口
 
@@ -300,7 +314,7 @@ create table persistent_logins (username varchar(64) not null, series varchar(64
 
 # 微服务权限
 
-### 认证授权过程分析
+### 认证授权过程分析 [项目地址](https://github.com/wangJiaLun-china/SpringSecurity)
 
 - 如果是基于 Session，那么 Spring-security 会对 cookie 里的 sessionid 进行解析，找 到服务器存储的 session 信息，然后判断当前用户是否符合请求的要求。 
 
@@ -309,3 +323,4 @@ create table persistent_logins (username varchar(64) not null, series varchar(64
   如果系统的模块众多，每个模块都需要进行授权与认证，所以我们选择基于 token 的形式 进行授权与认证，用户根据用户名密码认证成功，然后获取当前用户角色的一系列权限 值，并以用户名为 key，权限列表为 value 的形式存入 redis 缓存中，根据用户名相关信息 生成 token 返回，浏览器将 token 记录到 cookie 中，每次调用 api 接口都默认将 token 携带 到 header 请求头中，Spring-security 解析 header 头获取 token 信息，解析 token 获取当前 用户名，根据用户名就可以从 redis 中获取权限列表，这样 Spring-security 就能够判断当前 请求是否有权限访问
 
 ![image-20210312172129213](D:\资料\笔记\image\image-20210312172129213.png)
+
